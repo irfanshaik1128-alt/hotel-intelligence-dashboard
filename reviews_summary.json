@@ -1,0 +1,37 @@
+{
+  "kpis": {
+    "total_reviews": 515738,
+    "avg_score": 8.4,
+    "positive_pct": 65.08,
+    "negative_pct": 34.92
+  },
+  "sentiment_dist": {
+    "Positive": 335646,
+    "Negative": 180092
+  },
+  "top_hotels_reviews": {
+    "Britannia International Hotel Canary Wharf": 4789,
+    "Strand Palace Hotel": 4256,
+    "Park Plaza Westminster Bridge London": 4169,
+    "Copthorne Tara Hotel London Kensington": 3578,
+    "DoubleTree by Hilton Hotel London Tower of London": 3212,
+    "Grand Royale London Hyde Park": 2958,
+    "Holiday Inn London Kensington": 2768,
+    "Hilton London Metropole": 2628,
+    "Millennium Gloucester Hotel London": 2565,
+    "Intercontinental London The O2": 2551
+  },
+  "top_country_scores": {
+    "Spain": 8.55,
+    "Austria": 8.55,
+    "Netherlands": 8.46,
+    "France": 8.42,
+    "Italy": 8.35,
+    "Kingdom": 8.32
+  },
+  "reviews_by_year": {
+    "2015": 94527,
+    "2016": 264403,
+    "2017": 156808
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "kpis": {
+    "total_bookings": 87393,
+    "total_revenue": 34454521.31,
+    "avg_adr": 106.27,
+    "cancellation_rate": 27.49
+  },
+  "monthly_revenue": {
+    "January": 1079597.52,
+    "February": 1473600.2,
+    "March": 2043285.33,
+    "April": 2787157.05,
+    "May": 3122548.22,
+    "June": 3496345.05,
+    "July": 5862516.99,
+    "August": 7240652.99,
+    "September": 2689186.19,
+    "October": 2032649.25,
+    "November": 1219278.35,
+    "December": 1407704.17
+  },
+  "bookings_by_segment": {
+    "Online TA": 51618,
+    "Offline TA/TO": 13887,
+    "Direct": 11804,
+    "Groups": 4942,
+    "Corporate": 4211,
+    "Complementary": 702,
+    "Aviation": 227,
+    "Undefined": 2
+  },
+  "cancel_by_segment": {
+    "Aviation": 19.82,
+    "Complementary": 12.54,
+    "Corporate": 12.11,
+    "Direct": 14.72,
+    "Groups": 27.01,
+    "Offline TA/TO": 14.85,
+    "Online TA": 35.35,
+    "Undefined": 100.0
+  },
+  "revenue_by_hotel": {
+    "City Hotel": 18768191.54,
+    "Resort Hotel": 15686329.77
+  },
+  "top_countries_revenue": {
+    "PRT": 9076420.96,
+    "GBR": 4722374.74,
+    "FRA": 3598339.88,
+    "ESP": 2974742.6,
+    "DEU": 2113113.24,
+    "IRL": 1536940.05,
+    "ITA": 1211384.46,
+    "BEL": 888707.49,
+    "BRA": 795511.63,
+    "NLD": 732529.6
+  }
+}

@@ -1,0 +1,231 @@
+<script>
+  let cancellationModel = null;
+
+  async function loadModel() {
+    try {
+      const response = await fetch('cancellation_model.json');
+      if (!response.ok) {
+        throw new Error('Could not load cancellation_model.json');
+      }
+      cancellationModel = await response.json();
+      console.log("Cancellation model loaded:", cancellationModel);
+    } catch (error) {
+      console.error("Model loading error:", error);
+      document.getElementById("prediction-result").innerText =
+        "Error loading cancellation model JSON.";
+    }
+  }
+
+  function sigmoid(z) {
+    return 1 / (1 + Math.exp(-z));
+  }
+
+  function predictCancellation() {
+    if (!cancellationModel) {
+      document.getElementById("prediction-result").innerText = "Model not loaded yet.";
+      return;
+    }
+
+    const inputValues = [
+      parseFloat(document.getElementById("lead_time").value) || 0,
+      parseFloat(document.getElementById("total_nights").value) || 0,
+      parseFloat(document.getElementById("total_guests").value) || 0,
+      parseFloat(document.getElementById("previous_cancellations").value) || 0,
+      parseFloat(document.getElementById("booking_changes").value) || 0,
+      parseFloat(document.getElementById("adr").value) || 0,
+      parseFloat(document.getElementById("is_family").value) || 0,
+      parseFloat(document.getElementById("has_previous_cancellation").value) || 0
+    ];
+
+    const scaled = inputValues.map((val, i) => {
+      return (val - cancellationModel.means[i]) / cancellationModel.scales[i];
+    });
+
+    let z = cancellationModel.intercept;
+    for (let i = 0; i < scaled.length; i++) {
+      z += scaled[i] * cancellationModel.coefficients[i];
+    }
+
+    const prob = sigmoid(z);
+    const pct = (prob * 100).toFixed(2);
+
+    let label = "";
+    let color = "";
+
+    if (prob >= 0.7) {
+      label = "High Cancellation Risk";
+      color = "#c0392b";
+    } else if (prob >= 0.4) {
+      label = "Medium Cancellation Risk";
+      color = "#f39c12";
+    } else {
+      label = "Low Cancellation Risk";
+      color = "#27ae60";
+    }
+
+    document.getElementById("prediction-result").innerHTML = `
+      Prediction: <span style="color:${color}">${label}</span><br>
+      Probability of Cancellation: ${pct}%
+    `;
+  }
+
+  async function loadData() {
+    try {
+      const booking = await fetch('booking_summary.json').then(r => r.json());
+      const reviews = await fetch('reviews_summary.json').then(r => r.json());
+
+      const bookingKpis = booking.kpis;
+      document.getElementById('booking-kpis').innerHTML = `
+        <div class="card"><h3>Total Bookings</h3><p>${bookingKpis.total_bookings.toLocaleString()}</p></div>
+        <div class="card"><h3>Total Revenue</h3><p>$${bookingKpis.total_revenue.toLocaleString()}</p></div>
+        <div class="card"><h3>Average ADR</h3><p>$${bookingKpis.avg_adr}</p></div>
+        <div class="card"><h3>Cancellation Rate</h3><p>${bookingKpis.cancellation_rate}%</p></div>
+      `;
+
+      const reviewKpis = reviews.kpis;
+      document.getElementById('review-kpis').innerHTML = `
+        <div class="card"><h3>Total Reviews</h3><p>${reviewKpis.total_reviews.toLocaleString()}</p></div>
+        <div class="card"><h3>Average Review Score</h3><p>${reviewKpis.avg_score}</p></div>
+        <div class="card"><h3>Positive Reviews</h3><p>${reviewKpis.positive_pct}%</p></div>
+        <div class="card"><h3>Negative Reviews</h3><p>${reviewKpis.negative_pct}%</p></div>
+      `;
+
+      new Chart(document.getElementById('monthlyRevenueChart'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(booking.monthly_revenue),
+          datasets: [{
+            label: 'Revenue',
+            data: Object.values(booking.monthly_revenue)
+          }]
+        },
+        options: {
+          plugins: { title: { display: true, text: 'Monthly Revenue Trend' } }
+        }
+      });
+
+      new Chart(document.getElementById('segmentBookingsChart'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(booking.bookings_by_segment),
+          datasets: [{
+            label: 'Bookings',
+            data: Object.values(booking.bookings_by_segment)
+          }]
+        },
+        options: {
+          plugins: { title: { display: true, text: 'Bookings by Market Segment' } }
+        }
+      });
+
+      new Chart(document.getElementById('cancelSegmentChart'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(booking.cancel_by_segment),
+          datasets: [{
+            label: 'Cancellation Rate (%)',
+            data: Object.values(booking.cancel_by_segment)
+          }]
+        },
+        options: {
+          plugins: { title: { display: true, text: 'Cancellation Rate by Segment' } }
+        }
+      });
+
+      new Chart(document.getElementById('hotelRevenueChart'), {
+        type: 'pie',
+        data: {
+          labels: Object.keys(booking.revenue_by_hotel),
+          datasets: [{
+            label: 'Revenue',
+            data: Object.values(booking.revenue_by_hotel)
+          }]
+        },
+        options: {
+          plugins: { title: { display: true, text: 'Revenue by Hotel Type' } }
+        }
+      });
+
+      new Chart(document.getElementById('countryRevenueChart'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(booking.top_countries_revenue),
+          datasets: [{
+            label: 'Revenue',
+            data: Object.values(booking.top_countries_revenue)
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          plugins: { title: { display: true, text: 'Top 10 Countries by Revenue' } }
+        }
+      });
+
+      new Chart(document.getElementById('sentimentChart'), {
+        type: 'pie',
+        data: {
+          labels: Object.keys(reviews.sentiment_dist),
+          datasets: [{
+            label: 'Reviews',
+            data: Object.values(reviews.sentiment_dist)
+          }]
+        },
+        options: {
+          plugins: { title: { display: true, text: 'Sentiment Distribution' } }
+        }
+      });
+
+      new Chart(document.getElementById('topHotelsChart'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(reviews.top_hotels_reviews),
+          datasets: [{
+            label: 'Review Count',
+            data: Object.values(reviews.top_hotels_reviews)
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          plugins: { title: { display: true, text: 'Top 10 Hotels by Reviews' } }
+        }
+      });
+
+      new Chart(document.getElementById('countryScoreChart'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(reviews.top_country_scores),
+          datasets: [{
+            label: 'Average Score',
+            data: Object.values(reviews.top_country_scores)
+          }]
+        },
+        options: {
+          plugins: { title: { display: true, text: 'Top Countries by Average Review Score' } }
+        }
+      });
+
+      new Chart(document.getElementById('reviewTrendChart'), {
+        type: 'line',
+        data: {
+          labels: Object.keys(reviews.reviews_by_year),
+          datasets: [{
+            label: 'Reviews',
+            data: Object.values(reviews.reviews_by_year),
+            fill: false
+          }]
+        },
+        options: {
+          plugins: { title: { display: true, text: 'Review Trend Over Time' } }
+        }
+      });
+
+    } catch (error) {
+      console.error("Dashboard data loading error:", error);
+    }
+  }
+
+  window.onload = async function () {
+    await loadModel();
+    await loadData();
+  };
+</script>
