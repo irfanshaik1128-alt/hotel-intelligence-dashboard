@@ -1,231 +1,490 @@
-<script>
-  let cancellationModel = null;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI-Powered Hotel Intelligence Platform</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f6f9;
+      color: #222;
+    }
 
-  async function loadModel() {
-    try {
-      const response = await fetch('cancellation_model.json');
-      if (!response.ok) {
-        throw new Error('Could not load cancellation_model.json');
+    header {
+      background: #1f4e79;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .container {
+      width: 95%;
+      margin: 20px auto;
+    }
+
+    .section-title {
+      margin: 30px 0 15px;
+      font-size: 24px;
+      color: #1f4e79;
+      font-weight: bold;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      color: #555;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 28px;
+      font-weight: bold;
+      color: #1f4e79;
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .chart-box {
+      background: white;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    canvas {
+      width: 100% !important;
+      max-height: 360px;
+    }
+
+    .predict-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+    }
+
+    .predict-grid label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .predict-grid input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+
+    .predict-btn {
+      margin-top: 20px;
+      padding: 12px 20px;
+      background: #1f4e79;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .predict-btn:hover {
+      background: #163a59;
+    }
+
+    #prediction-result {
+      margin-top: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #1f4e79;
+      line-height: 1.6;
+    }
+
+    .error-box {
+      background: #fdecea;
+      color: #b71c1c;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 10px 0 20px;
+      border: 1px solid #f5c6cb;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+
+    @media (max-width: 600px) {
+      .charts {
+        grid-template-columns: 1fr;
       }
-      cancellationModel = await response.json();
-      console.log("Cancellation model loaded:", cancellationModel);
-    } catch (error) {
-      console.error("Model loading error:", error);
-      document.getElementById("prediction-result").innerText =
-        "Error loading cancellation model JSON.";
     }
-  }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AI-Powered Hotel Intelligence Platform</h1>
+    <p>Booking Analytics, Cancellation Trends, Revenue Insights, and Review Intelligence</p>
+  </header>
 
-  function sigmoid(z) {
-    return 1 / (1 + Math.exp(-z));
-  }
+  <div class="container">
+    <div id="global-error"></div>
 
-  function predictCancellation() {
-    if (!cancellationModel) {
-      document.getElementById("prediction-result").innerText = "Model not loaded yet.";
-      return;
-    }
+    <div class="section-title">Booking KPIs</div>
+    <div class="cards" id="booking-kpis"></div>
 
-    const inputValues = [
-      parseFloat(document.getElementById("lead_time").value) || 0,
-      parseFloat(document.getElementById("total_nights").value) || 0,
-      parseFloat(document.getElementById("total_guests").value) || 0,
-      parseFloat(document.getElementById("previous_cancellations").value) || 0,
-      parseFloat(document.getElementById("booking_changes").value) || 0,
-      parseFloat(document.getElementById("adr").value) || 0,
-      parseFloat(document.getElementById("is_family").value) || 0,
-      parseFloat(document.getElementById("has_previous_cancellation").value) || 0
-    ];
+    <div class="section-title">Live Booking Cancellation Predictor</div>
+    <div class="chart-box" style="margin-bottom: 20px;">
+      <div class="predict-grid">
+        <div>
+          <label for="lead_time">Lead Time</label>
+          <input type="number" id="lead_time" value="30">
+        </div>
 
-    const scaled = inputValues.map((val, i) => {
-      return (val - cancellationModel.means[i]) / cancellationModel.scales[i];
-    });
+        <div>
+          <label for="total_nights">Total Nights</label>
+          <input type="number" id="total_nights" value="3">
+        </div>
 
-    let z = cancellationModel.intercept;
-    for (let i = 0; i < scaled.length; i++) {
-      z += scaled[i] * cancellationModel.coefficients[i];
-    }
+        <div>
+          <label for="total_guests">Total Guests</label>
+          <input type="number" id="total_guests" value="2">
+        </div>
 
-    const prob = sigmoid(z);
-    const pct = (prob * 100).toFixed(2);
+        <div>
+          <label for="previous_cancellations">Previous Cancellations</label>
+          <input type="number" id="previous_cancellations" value="0">
+        </div>
 
-    let label = "";
-    let color = "";
+        <div>
+          <label for="booking_changes">Booking Changes</label>
+          <input type="number" id="booking_changes" value="0">
+        </div>
 
-    if (prob >= 0.7) {
-      label = "High Cancellation Risk";
-      color = "#c0392b";
-    } else if (prob >= 0.4) {
-      label = "Medium Cancellation Risk";
-      color = "#f39c12";
-    } else {
-      label = "Low Cancellation Risk";
-      color = "#27ae60";
-    }
+        <div>
+          <label for="adr">ADR</label>
+          <input type="number" id="adr" value="100">
+        </div>
 
-    document.getElementById("prediction-result").innerHTML = `
-      Prediction: <span style="color:${color}">${label}</span><br>
-      Probability of Cancellation: ${pct}%
-    `;
-  }
+        <div>
+          <label for="is_family">Is Family (0/1)</label>
+          <input type="number" id="is_family" value="0" min="0" max="1">
+        </div>
 
-  async function loadData() {
-    try {
-      const booking = await fetch('booking_summary.json').then(r => r.json());
-      const reviews = await fetch('reviews_summary.json').then(r => r.json());
+        <div>
+          <label for="has_previous_cancellation">Has Previous Cancellation (0/1)</label>
+          <input type="number" id="has_previous_cancellation" value="0" min="0" max="1">
+        </div>
+      </div>
 
-      const bookingKpis = booking.kpis;
-      document.getElementById('booking-kpis').innerHTML = `
-        <div class="card"><h3>Total Bookings</h3><p>${bookingKpis.total_bookings.toLocaleString()}</p></div>
-        <div class="card"><h3>Total Revenue</h3><p>$${bookingKpis.total_revenue.toLocaleString()}</p></div>
-        <div class="card"><h3>Average ADR</h3><p>$${bookingKpis.avg_adr}</p></div>
-        <div class="card"><h3>Cancellation Rate</h3><p>${bookingKpis.cancellation_rate}%</p></div>
+      <button class="predict-btn" onclick="predictCancellation()">
+        Predict Cancellation Risk
+      </button>
+
+      <div id="prediction-result"></div>
+    </div>
+
+    <div class="charts">
+      <div class="chart-box"><canvas id="monthlyRevenueChart"></canvas></div>
+      <div class="chart-box"><canvas id="segmentBookingsChart"></canvas></div>
+      <div class="chart-box"><canvas id="cancelSegmentChart"></canvas></div>
+      <div class="chart-box"><canvas id="hotelRevenueChart"></canvas></div>
+      <div class="chart-box"><canvas id="countryRevenueChart"></canvas></div>
+    </div>
+
+    <div class="section-title">Review KPIs</div>
+    <div class="cards" id="review-kpis"></div>
+
+    <div class="charts">
+      <div class="chart-box"><canvas id="sentimentChart"></canvas></div>
+      <div class="chart-box"><canvas id="topHotelsChart"></canvas></div>
+      <div class="chart-box"><canvas id="countryScoreChart"></canvas></div>
+      <div class="chart-box"><canvas id="reviewTrendChart"></canvas></div>
+    </div>
+  </div>
+
+  <footer>
+    Capstone Project Dashboard | Hosted with GitHub Pages
+  </footer>
+
+  <script>
+    let cancellationModel = null;
+
+    function showError(message) {
+      document.getElementById("global-error").innerHTML = `
+        <div class="error-box">${message}</div>
       `;
-
-      const reviewKpis = reviews.kpis;
-      document.getElementById('review-kpis').innerHTML = `
-        <div class="card"><h3>Total Reviews</h3><p>${reviewKpis.total_reviews.toLocaleString()}</p></div>
-        <div class="card"><h3>Average Review Score</h3><p>${reviewKpis.avg_score}</p></div>
-        <div class="card"><h3>Positive Reviews</h3><p>${reviewKpis.positive_pct}%</p></div>
-        <div class="card"><h3>Negative Reviews</h3><p>${reviewKpis.negative_pct}%</p></div>
-      `;
-
-      new Chart(document.getElementById('monthlyRevenueChart'), {
-        type: 'bar',
-        data: {
-          labels: Object.keys(booking.monthly_revenue),
-          datasets: [{
-            label: 'Revenue',
-            data: Object.values(booking.monthly_revenue)
-          }]
-        },
-        options: {
-          plugins: { title: { display: true, text: 'Monthly Revenue Trend' } }
-        }
-      });
-
-      new Chart(document.getElementById('segmentBookingsChart'), {
-        type: 'bar',
-        data: {
-          labels: Object.keys(booking.bookings_by_segment),
-          datasets: [{
-            label: 'Bookings',
-            data: Object.values(booking.bookings_by_segment)
-          }]
-        },
-        options: {
-          plugins: { title: { display: true, text: 'Bookings by Market Segment' } }
-        }
-      });
-
-      new Chart(document.getElementById('cancelSegmentChart'), {
-        type: 'bar',
-        data: {
-          labels: Object.keys(booking.cancel_by_segment),
-          datasets: [{
-            label: 'Cancellation Rate (%)',
-            data: Object.values(booking.cancel_by_segment)
-          }]
-        },
-        options: {
-          plugins: { title: { display: true, text: 'Cancellation Rate by Segment' } }
-        }
-      });
-
-      new Chart(document.getElementById('hotelRevenueChart'), {
-        type: 'pie',
-        data: {
-          labels: Object.keys(booking.revenue_by_hotel),
-          datasets: [{
-            label: 'Revenue',
-            data: Object.values(booking.revenue_by_hotel)
-          }]
-        },
-        options: {
-          plugins: { title: { display: true, text: 'Revenue by Hotel Type' } }
-        }
-      });
-
-      new Chart(document.getElementById('countryRevenueChart'), {
-        type: 'bar',
-        data: {
-          labels: Object.keys(booking.top_countries_revenue),
-          datasets: [{
-            label: 'Revenue',
-            data: Object.values(booking.top_countries_revenue)
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          plugins: { title: { display: true, text: 'Top 10 Countries by Revenue' } }
-        }
-      });
-
-      new Chart(document.getElementById('sentimentChart'), {
-        type: 'pie',
-        data: {
-          labels: Object.keys(reviews.sentiment_dist),
-          datasets: [{
-            label: 'Reviews',
-            data: Object.values(reviews.sentiment_dist)
-          }]
-        },
-        options: {
-          plugins: { title: { display: true, text: 'Sentiment Distribution' } }
-        }
-      });
-
-      new Chart(document.getElementById('topHotelsChart'), {
-        type: 'bar',
-        data: {
-          labels: Object.keys(reviews.top_hotels_reviews),
-          datasets: [{
-            label: 'Review Count',
-            data: Object.values(reviews.top_hotels_reviews)
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          plugins: { title: { display: true, text: 'Top 10 Hotels by Reviews' } }
-        }
-      });
-
-      new Chart(document.getElementById('countryScoreChart'), {
-        type: 'bar',
-        data: {
-          labels: Object.keys(reviews.top_country_scores),
-          datasets: [{
-            label: 'Average Score',
-            data: Object.values(reviews.top_country_scores)
-          }]
-        },
-        options: {
-          plugins: { title: { display: true, text: 'Top Countries by Average Review Score' } }
-        }
-      });
-
-      new Chart(document.getElementById('reviewTrendChart'), {
-        type: 'line',
-        data: {
-          labels: Object.keys(reviews.reviews_by_year),
-          datasets: [{
-            label: 'Reviews',
-            data: Object.values(reviews.reviews_by_year),
-            fill: false
-          }]
-        },
-        options: {
-          plugins: { title: { display: true, text: 'Review Trend Over Time' } }
-        }
-      });
-
-    } catch (error) {
-      console.error("Dashboard data loading error:", error);
     }
-  }
 
-  window.onload = async function () {
-    await loadModel();
-    await loadData();
-  };
-</script>
+    async function fetchJson(fileName) {
+      const response = await fetch(fileName);
+      if (!response.ok) {
+        throw new Error(`Could not load ${fileName}`);
+      }
+      return await response.json();
+    }
+
+    async function loadModel() {
+      try {
+        cancellationModel = await fetchJson("cancellation_model.json");
+        console.log("Cancellation model loaded:", cancellationModel);
+      } catch (error) {
+        console.error("Model loading error:", error);
+        document.getElementById("prediction-result").innerText =
+          "Error loading cancellation model JSON.";
+        showError(error.message);
+      }
+    }
+
+    function sigmoid(z) {
+      return 1 / (1 + Math.exp(-z));
+    }
+
+    function predictCancellation() {
+      if (!cancellationModel) {
+        document.getElementById("prediction-result").innerText = "Model not loaded yet.";
+        return;
+      }
+
+      const inputValues = [
+        parseFloat(document.getElementById("lead_time").value) || 0,
+        parseFloat(document.getElementById("total_nights").value) || 0,
+        parseFloat(document.getElementById("total_guests").value) || 0,
+        parseFloat(document.getElementById("previous_cancellations").value) || 0,
+        parseFloat(document.getElementById("booking_changes").value) || 0,
+        parseFloat(document.getElementById("adr").value) || 0,
+        parseFloat(document.getElementById("is_family").value) || 0,
+        parseFloat(document.getElementById("has_previous_cancellation").value) || 0
+      ];
+
+      const scaled = inputValues.map((val, i) => {
+        return (val - cancellationModel.means[i]) / cancellationModel.scales[i];
+      });
+
+      let z = cancellationModel.intercept;
+      for (let i = 0; i < scaled.length; i++) {
+        z += scaled[i] * cancellationModel.coefficients[i];
+      }
+
+      const prob = sigmoid(z);
+      const pct = (prob * 100).toFixed(2);
+
+      let label = "";
+      let color = "";
+
+      if (prob >= 0.7) {
+        label = "High Cancellation Risk";
+        color = "#c0392b";
+      } else if (prob >= 0.4) {
+        label = "Medium Cancellation Risk";
+        color = "#f39c12";
+      } else {
+        label = "Low Cancellation Risk";
+        color = "#27ae60";
+      }
+
+      document.getElementById("prediction-result").innerHTML = `
+        Prediction: <span style="color:${color}">${label}</span><br>
+        Probability of Cancellation: ${pct}%
+      `;
+    }
+
+    function createBarChart(id, labels, data, title, horizontal = false) {
+      const ctx = document.getElementById(id);
+      if (!ctx) return;
+
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: title,
+            data: data
+          }]
+        },
+        options: {
+          responsive: true,
+          indexAxis: horizontal ? "y" : "x",
+          plugins: {
+            title: {
+              display: true,
+              text: title
+            }
+          }
+        }
+      });
+    }
+
+    function createPieChart(id, labels, data, title) {
+      const ctx = document.getElementById(id);
+      if (!ctx) return;
+
+      new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: title,
+            data: data
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: title
+            }
+          }
+        }
+      });
+    }
+
+    function createLineChart(id, labels, data, title) {
+      const ctx = document.getElementById(id);
+      if (!ctx) return;
+
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: title,
+            data: data,
+            fill: false,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: title
+            }
+          }
+        }
+      });
+    }
+
+    async function loadData() {
+      try {
+        const booking = await fetchJson("booking_summary.json");
+        const reviews = await fetchJson("reviews_summary.json");
+
+        const bookingKpis = booking.kpis;
+        document.getElementById("booking-kpis").innerHTML = `
+          <div class="card"><h3>Total Bookings</h3><p>${bookingKpis.total_bookings.toLocaleString()}</p></div>
+          <div class="card"><h3>Total Revenue</h3><p>$${bookingKpis.total_revenue.toLocaleString()}</p></div>
+          <div class="card"><h3>Average ADR</h3><p>$${bookingKpis.avg_adr}</p></div>
+          <div class="card"><h3>Cancellation Rate</h3><p>${bookingKpis.cancellation_rate}%</p></div>
+        `;
+
+        const reviewKpis = reviews.kpis;
+        document.getElementById("review-kpis").innerHTML = `
+          <div class="card"><h3>Total Reviews</h3><p>${reviewKpis.total_reviews.toLocaleString()}</p></div>
+          <div class="card"><h3>Average Review Score</h3><p>${reviewKpis.avg_score}</p></div>
+          <div class="card"><h3>Positive Reviews</h3><p>${reviewKpis.positive_pct}%</p></div>
+          <div class="card"><h3>Negative Reviews</h3><p>${reviewKpis.negative_pct}%</p></div>
+        `;
+
+        createBarChart(
+          "monthlyRevenueChart",
+          Object.keys(booking.monthly_revenue),
+          Object.values(booking.monthly_revenue),
+          "Monthly Revenue Trend"
+        );
+
+        createBarChart(
+          "segmentBookingsChart",
+          Object.keys(booking.bookings_by_segment),
+          Object.values(booking.bookings_by_segment),
+          "Bookings by Market Segment"
+        );
+
+        createBarChart(
+          "cancelSegmentChart",
+          Object.keys(booking.cancel_by_segment),
+          Object.values(booking.cancel_by_segment),
+          "Cancellation Rate by Segment"
+        );
+
+        createPieChart(
+          "hotelRevenueChart",
+          Object.keys(booking.revenue_by_hotel),
+          Object.values(booking.revenue_by_hotel),
+          "Revenue by Hotel Type"
+        );
+
+        createBarChart(
+          "countryRevenueChart",
+          Object.keys(booking.top_countries_revenue),
+          Object.values(booking.top_countries_revenue),
+          "Top 10 Countries by Revenue",
+          true
+        );
+
+        createPieChart(
+          "sentimentChart",
+          Object.keys(reviews.sentiment_dist),
+          Object.values(reviews.sentiment_dist),
+          "Sentiment Distribution"
+        );
+
+        createBarChart(
+          "topHotelsChart",
+          Object.keys(reviews.top_hotels_reviews),
+          Object.values(reviews.top_hotels_reviews),
+          "Top 10 Hotels by Reviews",
+          true
+        );
+
+        createBarChart(
+          "countryScoreChart",
+          Object.keys(reviews.top_country_scores),
+          Object.values(reviews.top_country_scores),
+          "Top Countries by Average Review Score"
+        );
+
+        createLineChart(
+          "reviewTrendChart",
+          Object.keys(reviews.reviews_by_year),
+          Object.values(reviews.reviews_by_year),
+          "Review Trend Over Time"
+        );
+
+      } catch (error) {
+        console.error("Dashboard data loading error:", error);
+        showError(error.message);
+      }
+    }
+
+    window.onload = async function () {
+      await loadModel();
+      await loadData();
+    };
+  </script>
+</body>
+</html>
